@@ -48,6 +48,10 @@ class MainLoop:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     self.reset_grid()
+                if event.key == pygame.K_SPACE:
+                    x, y = pygame.mouse.get_pos()
+                    self.grid.new_stone(x // PIXEL_SIZE, y // PIXEL_SIZE)
+
         buttons = pygame.mouse.get_pressed()
         if buttons[0]:
             self.handle_right_click()

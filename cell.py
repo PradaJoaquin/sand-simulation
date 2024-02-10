@@ -8,6 +8,7 @@ class CellType(enum.Enum):
     AIR = 0
     SAND = 1
     WATER = 2
+    STONE = 3
 
 
 class Cell:
@@ -147,3 +148,11 @@ class Water(Cell):
             return (x + move_value, y)
 
         return (x + move_value, y + 1)
+
+
+class Stone(Cell):
+    def __init__(self):
+        super().__init__(CellType.STONE, colors.STONE)
+
+    def update(self, grid, x, y):
+        pass
