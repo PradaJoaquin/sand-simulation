@@ -50,12 +50,17 @@ class MainLoop:
                     self.reset_grid()
         buttons = pygame.mouse.get_pressed()
         if buttons[0]:
-            # Handle mouse click
-            self.handle_click()
+            self.handle_right_click()
+        if buttons[2]:
+            self.handle_left_click()
 
-    def handle_click(self):
+    def handle_right_click(self):
         x, y = pygame.mouse.get_pos()
         self.grid.new_sand(x // PIXEL_SIZE, y // PIXEL_SIZE)
+
+    def handle_left_click(self):
+        x, y = pygame.mouse.get_pos()
+        self.grid.new_water(x // PIXEL_SIZE, y // PIXEL_SIZE)
 
     def reset_grid(self):
         self.grid = Grid(

@@ -1,5 +1,5 @@
 import random
-from cell import Air, Cell, Sand, Bedrock
+from cell import Air, Cell, Sand, Bedrock, Water
 
 
 class Grid:
@@ -19,6 +19,15 @@ class Grid:
             new_y = y + random.randint(-5, 5)
             if 0 <= new_x < self.width and 0 <= new_y < self.height:
                 self.grid[new_y][new_x] = Sand()
+                self.already_updated[(new_x, new_y)] = self.grid[new_y][new_x]
+
+    def new_water(self, x, y):
+        # create multiple water particles in a small area
+        for _ in range(10):
+            new_x = x + random.randint(-5, 5)
+            new_y = y + random.randint(-5, 5)
+            if 0 <= new_x < self.width and 0 <= new_y < self.height:
+                self.grid[new_y][new_x] = Water()
                 self.already_updated[(new_x, new_y)] = self.grid[new_y][new_x]
 
     def update(self):
