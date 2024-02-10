@@ -27,16 +27,7 @@ class MainLoop:
 
     def run(self):
         while self.running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_r:
-                        self.reset_grid()
-            buttons = pygame.mouse.get_pressed()
-            if buttons[0]:
-                # Handle mouse click
-                self.handle_click()
+            self.handle_input()
 
             self.render()
             self.grid.update()
@@ -49,6 +40,18 @@ class MainLoop:
             print(self.clock.get_fps())
 
         self.cleanup()
+
+    def handle_input(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    self.reset_grid()
+        buttons = pygame.mouse.get_pressed()
+        if buttons[0]:
+            # Handle mouse click
+            self.handle_click()
 
     def handle_click(self):
         x, y = pygame.mouse.get_pos()
