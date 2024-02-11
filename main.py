@@ -1,8 +1,15 @@
+from enum import Enum
 import pygame
 import colors
 from grid import Grid
 
-PIXEL_SIZE = 5
+DEBUG = True
+
+
+class CurrentMaterial(Enum):
+    SAND = 0
+    WATER = 1
+    STONE = 2
 
 
 class MainLoop:
@@ -21,8 +28,13 @@ class MainLoop:
         # Set the desired FPS
         self.fps = 60
 
-        self.grid = Grid(screen_width // PIXEL_SIZE, screen_height // PIXEL_SIZE)
+        self.pixel_size = 2
 
+        self.grid = Grid(
+            screen_width // self.pixel_size, screen_height // self.pixel_size
+        )
+
+        self.current_material = CurrentMaterial.SAND
         self.current_cursor_size = 1
 
         self.running = True
@@ -39,7 +51,10 @@ class MainLoop:
 
             # Limit the FPS by sleeping for the remainder of the frame time
             self.clock.tick(self.fps)
-            print(self.clock.get_fps())
+            if DEBUG:
+                pygame.display.set_caption(
+                    f"Sand Simulator - FPS: {self.clock.get_fps() :.2f}"
+                )
 
         self.cleanup()
 
@@ -50,35 +65,53 @@ class MainLoop:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     self.reset_grid()
-                if event.key == pygame.K_SPACE:
-                    self.spawn_stone()
-                if event.key == pygame.K_COMMA:
-                    self.change_cursor_size(-2)
-                if event.key == pygame.K_PERIOD:
-                    self.change_cursor_size(2)
+                if event.key == pygame.K_1:
+                    self.change_current_material(CurrentMaterial.SAND)
+                if event.key == pygame.K_2:
+                    self.change_current_material(CurrentMaterial.WATER)
+                if event.key == pygame.K_3:
+                    self.change_current_material(CurrentMaterial.STONE)
+            if event.type == pygame.MOUSEWHEEL:
+                if event.y > 0:
+                    self.change_cursor_size(1)
+                if event.y < 0:
+                    self.change_cursor_size(-1)
 
         buttons = pygame.mouse.get_pressed()
         if buttons[0]:
-            self.spawn_sand()
+            if self.current_material == CurrentMaterial.SAND:
+                self.spawn_sand()
+            if self.current_material == CurrentMaterial.WATER:
+                self.spawn_water()
+            if self.current_material == CurrentMaterial.STONE:
+                self.spawn_stone()
         if buttons[2]:
-            self.spawn_water()
+            self.remove_cells()
+
+    def change_current_material(self, material: CurrentMaterial):
+        self.current_material = material
+        if DEBUG:
+            print(f"Current material: {material.name}")
 
     def spawn_sand(self):
-        self.spawn_cell(self.grid.spawn_sand)
+        self.modify_grid(self.grid.spawn_sand)
 
     def spawn_water(self):
-        self.spawn_cell(self.grid.spawn_water)
+        self.modify_grid(self.grid.spawn_water)
 
     def spawn_stone(self):
-        self.spawn_cell(self.grid.spawn_stone)
+        self.modify_grid(self.grid.spawn_stone)
 
-    def spawn_cell(self, spawn_function):
+    def remove_cells(self):
+        self.modify_grid(self.grid.remove_cell)
+
+    def modify_grid(self, modify_function):
         """
-        Spawns a cell or a group of cells at the mouse position, based on the current cursor size.
+        Modify the grid based on the current cursor size and mouse position.
         """
         x, y = pygame.mouse.get_pos()
-        x_grid = x // PIXEL_SIZE
-        y_grid = y // PIXEL_SIZE
+        x_grid = x // self.pixel_size
+        y_grid = y // self.pixel_size
 
         for i in range(
             x_grid - (self.current_cursor_size // 2),
@@ -88,18 +121,20 @@ class MainLoop:
                 y_grid - (self.current_cursor_size // 2),
                 y_grid + (self.current_cursor_size // 2) + 1,
             ):
-                spawn_function(i, j)
+                modify_function(i, j)
 
     def reset_grid(self):
         self.grid = Grid(
-            self.screen.get_width() // PIXEL_SIZE,
-            self.screen.get_height() // PIXEL_SIZE,
+            self.screen.get_width() // self.pixel_size,
+            self.screen.get_height() // self.pixel_size,
         )
         self.screen.fill(colors.BLACK)
 
     def change_cursor_size(self, change: int):
         if not self.current_cursor_size + change < 1:
             self.current_cursor_size += change
+            if DEBUG:
+                print(f"Current cursor size: {self.current_cursor_size}")
 
     def render(self):
         self.render_cells()
@@ -113,7 +148,12 @@ class MainLoop:
         pygame.draw.rect(
             self.screen,
             cell.color,
-            (x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE),
+            (
+                x * self.pixel_size,
+                y * self.pixel_size,
+                self.pixel_size,
+                self.pixel_size,
+            ),
         )
 
     def cleanup(self):

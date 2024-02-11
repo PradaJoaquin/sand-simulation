@@ -26,6 +26,11 @@ class Grid:
             self.grid[y][x] = cell
             self.already_updated[(x, y)] = self.grid[y][x]
 
+    def remove_cell(self, x, y):
+        if self.is_inside_grid(x, y):
+            self.grid[y][x] = Air()
+            self.already_updated[(x, y)] = self.grid[y][x]
+
     def update(self):
         self.new_desired_positions = {}
         self.already_updated = {}

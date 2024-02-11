@@ -1,9 +1,9 @@
 import colors
-import enum
+from enum import Enum
 import random
 
 
-class CellType(enum.Enum):
+class CellType(Enum):
     BEDROCK = -1  # Cell type representing the border of the grid
     AIR = 0
     SAND = 1
