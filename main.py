@@ -77,11 +77,18 @@ class MainLoop:
         Spawns a cell or a group of cells at the mouse position, based on the current cursor size.
         """
         x, y = pygame.mouse.get_pos()
-        for i in range(-self.current_cursor_size // 2, self.current_cursor_size // 2):
+        x_grid = x // PIXEL_SIZE
+        y_grid = y // PIXEL_SIZE
+
+        for i in range(
+            x_grid - (self.current_cursor_size // 2),
+            x_grid + (self.current_cursor_size // 2) + 1,
+        ):
             for j in range(
-                -self.current_cursor_size // 2, self.current_cursor_size // 2
+                y_grid - (self.current_cursor_size // 2),
+                y_grid + (self.current_cursor_size // 2) + 1,
             ):
-                spawn_function(x // PIXEL_SIZE + i, y // PIXEL_SIZE + j)
+                spawn_function(i, j)
 
     def reset_grid(self):
         self.grid = Grid(
@@ -100,11 +107,14 @@ class MainLoop:
     def render_cells(self):
         updated_cells = self.grid.get_updated_cells()
         for (x, y), cell in updated_cells.items():
-            pygame.draw.rect(
-                self.screen,
-                cell.color,
-                (x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE),
-            )
+            self.render_cell(x, y, cell)
+
+    def render_cell(self, x, y, cell):
+        pygame.draw.rect(
+            self.screen,
+            cell.color,
+            (x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE),
+        )
 
     def cleanup(self):
         pygame.quit()
