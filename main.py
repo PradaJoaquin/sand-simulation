@@ -64,13 +64,13 @@ class MainLoop:
             self.spawn_water()
 
     def spawn_sand(self):
-        self.spawn_cell(self.grid.new_sand)
+        self.spawn_cell(self.grid.spawn_sand)
 
     def spawn_water(self):
-        self.spawn_cell(self.grid.new_water)
+        self.spawn_cell(self.grid.spawn_water)
 
     def spawn_stone(self):
-        self.spawn_cell(self.grid.new_stone)
+        self.spawn_cell(self.grid.spawn_stone)
 
     def spawn_cell(self, spawn_function):
         """

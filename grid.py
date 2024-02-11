@@ -12,16 +12,16 @@ class Grid:
         self.new_desired_positions = {}
         self.already_updated = {}
 
-    def new_sand(self, x, y):
-        self.add_cell(x, y, Sand())
+    def spawn_sand(self, x, y):
+        self.spawn_cell(x, y, Sand())
 
-    def new_water(self, x, y):
-        self.add_cell(x, y, Water())
+    def spawn_water(self, x, y):
+        self.spawn_cell(x, y, Water())
 
-    def new_stone(self, x, y):
-        self.add_cell(x, y, Stone())
+    def spawn_stone(self, x, y):
+        self.spawn_cell(x, y, Stone())
 
-    def add_cell(self, x, y, cell):
+    def spawn_cell(self, x, y, cell):
         if self.is_inside_grid(x, y):
             self.grid[y][x] = cell
             self.already_updated[(x, y)] = self.grid[y][x]
