@@ -23,6 +23,8 @@ class MainLoop:
 
         self.grid = Grid(screen_width // PIXEL_SIZE, screen_height // PIXEL_SIZE)
 
+        self.current_cursor_size = 1
+
         self.running = True
 
     def run(self):
@@ -49,22 +51,37 @@ class MainLoop:
                 if event.key == pygame.K_r:
                     self.reset_grid()
                 if event.key == pygame.K_SPACE:
-                    x, y = pygame.mouse.get_pos()
-                    self.grid.new_stone(x // PIXEL_SIZE, y // PIXEL_SIZE)
+                    self.spawn_stone()
+                if event.key == pygame.K_COMMA:
+                    self.change_cursor_size(-2)
+                if event.key == pygame.K_PERIOD:
+                    self.change_cursor_size(2)
 
         buttons = pygame.mouse.get_pressed()
         if buttons[0]:
-            self.handle_right_click()
+            self.spawn_sand()
         if buttons[2]:
-            self.handle_left_click()
+            self.spawn_water()
 
-    def handle_right_click(self):
-        x, y = pygame.mouse.get_pos()
-        self.grid.new_sand(x // PIXEL_SIZE, y // PIXEL_SIZE)
+    def spawn_sand(self):
+        self.spawn_cell(self.grid.new_sand)
 
-    def handle_left_click(self):
+    def spawn_water(self):
+        self.spawn_cell(self.grid.new_water)
+
+    def spawn_stone(self):
+        self.spawn_cell(self.grid.new_stone)
+
+    def spawn_cell(self, spawn_function):
+        """
+        Spawns a cell or a group of cells at the mouse position, based on the current cursor size.
+        """
         x, y = pygame.mouse.get_pos()
-        self.grid.new_water(x // PIXEL_SIZE, y // PIXEL_SIZE)
+        for i in range(-self.current_cursor_size // 2, self.current_cursor_size // 2):
+            for j in range(
+                -self.current_cursor_size // 2, self.current_cursor_size // 2
+            ):
+                spawn_function(x // PIXEL_SIZE + i, y // PIXEL_SIZE + j)
 
     def reset_grid(self):
         self.grid = Grid(
@@ -73,7 +90,14 @@ class MainLoop:
         )
         self.screen.fill(colors.BLACK)
 
+    def change_cursor_size(self, change: int):
+        if not self.current_cursor_size + change < 1:
+            self.current_cursor_size += change
+
     def render(self):
+        self.render_cells()
+
+    def render_cells(self):
         updated_cells = self.grid.get_updated_cells()
         for (x, y), cell in updated_cells.items():
             pygame.draw.rect(

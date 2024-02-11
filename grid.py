@@ -13,31 +13,18 @@ class Grid:
         self.already_updated = {}
 
     def new_sand(self, x, y):
-        # create multiple sand particles in a small area
-        for _ in range(10):
-            new_x = x + random.randint(-5, 5)
-            new_y = y + random.randint(-5, 5)
-            if 0 <= new_x < self.width and 0 <= new_y < self.height:
-                self.grid[new_y][new_x] = Sand()
-                self.already_updated[(new_x, new_y)] = self.grid[new_y][new_x]
+        self.add_cell(x, y, Sand())
 
     def new_water(self, x, y):
-        # create multiple water particles in a small area
-        for _ in range(10):
-            new_x = x + random.randint(-5, 5)
-            new_y = y + random.randint(-5, 5)
-            if 0 <= new_x < self.width and 0 <= new_y < self.height:
-                self.grid[new_y][new_x] = Water()
-                self.already_updated[(new_x, new_y)] = self.grid[new_y][new_x]
+        self.add_cell(x, y, Water())
 
     def new_stone(self, x, y):
-        # create multiple stone particles in a small area
-        for _ in range(10):
-            new_x = x + random.randint(-5, 5)
-            new_y = y + random.randint(-5, 5)
-            if 0 <= new_x < self.width and 0 <= new_y < self.height:
-                self.grid[new_y][new_x] = Stone()
-                self.already_updated[(new_x, new_y)] = self.grid[new_y][new_x]
+        self.add_cell(x, y, Stone())
+
+    def add_cell(self, x, y, cell):
+        if self.is_inside_grid(x, y):
+            self.grid[y][x] = cell
+            self.already_updated[(x, y)] = self.grid[y][x]
 
     def update(self):
         self.new_desired_positions = {}
@@ -64,10 +51,13 @@ class Grid:
 
     def get_cell(self, x, y) -> Cell:
         # Check if the cell is outside the grid
-        if x < 0 or x >= self.width or y < 0 or y >= self.height:
+        if not self.is_inside_grid(x, y):
             return Bedrock()
 
         return self.grid[y][x]
 
     def get_updated_cells(self):
         return self.already_updated
+
+    def is_inside_grid(self, x, y):
+        return 0 <= x < self.width and 0 <= y < self.height
