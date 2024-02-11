@@ -37,7 +37,11 @@ class Grid:
                 if new_position:
                     self.new_desired_positions[(x, y)] = new_position
 
-        for (x, y), new_position in self.new_desired_positions.items():
+        # Shuffle the cells to update to avoid bias
+        cells_to_update = list(self.new_desired_positions.items())
+        random.shuffle(cells_to_update)
+
+        for (x, y), new_position in cells_to_update:
             self.switch_cells(x, y, *new_position)
 
     def switch_cells(self, x1, y1, x2, y2):
