@@ -126,6 +126,44 @@ class Liquid(GravityAffected):
         """
         return self.can_traverse(cell) or isinstance(cell, Liquid)
 
+    def update_not_falling(self, grid, x, y):
+        return self.update_flow(grid, x, y)
+
+    def update_flow(self, grid, x, y):
+        furthest_right = self.furthest_flow_position(grid, x, y, 1)
+        furthest_left = self.furthest_flow_position(grid, x, y, -1)
+
+        delta_right = abs(furthest_right - x)
+        delta_left = abs(furthest_left - x)
+
+        if delta_right == delta_left:
+            new_x = random.choice([furthest_right, furthest_left])
+            return (new_x, y)
+        elif delta_right > delta_left:
+            return (furthest_right, y)
+        else:
+            return (furthest_left, y)
+
+    def furthest_flow_position(self, grid, x, y, direction):
+        furthest_x = x + (self.flow_speed * direction)
+        furthest_air = x
+        for i in range(x, furthest_x, direction):
+            next_cell = grid.get_cell(i + direction, y)
+            if not self.can_flow_through(next_cell):
+                return i
+            if isinstance(next_cell, Air):
+                # Look above the air cell
+                above_cell = grid.get_cell(i + direction, y - 1)
+                # We prioritize falling rather than flowing to accelerate the water flow
+                if not isinstance(above_cell, Liquid):
+                    furthest_air = i + direction
+                else:
+                    # But we still leave a small chance for the water to flow to the side, to simulate bubbles
+                    if random.random() < 0.05:
+                        furthest_air = i + direction
+
+        return furthest_air
+
 
 class MovableSolid(Solid):
     def __init__(self, type, color):
@@ -171,36 +209,8 @@ class Sand(MovableSolid):
 
 class Water(Liquid):
     def __init__(self):
-        flow_speed = 3
+        flow_speed = 5
         super().__init__(CellType.WATER, colors.WATER, flow_speed)
-
-    def update_not_falling(self, grid, x, y):
-        return self.update_flow(grid, x, y)
-
-    def update_flow(self, grid, x, y):
-        # TODO: Change to a better algorithm, it should look for the furthest air cell to flow, passing through other liquids
-        is_left_empty = False
-        is_right_empty = False
-
-        is_left_empty = self.can_flow_through(grid.get_cell(x - 1, y))
-        is_right_empty = self.can_flow_through(grid.get_cell(x + 1, y))
-
-        if is_left_empty and is_right_empty:
-            direction = random.choice([1, -1])
-        elif is_left_empty:
-            direction = -1
-        elif is_right_empty:
-            direction = 1
-        else:
-            return (x, y)
-        return self.furthest_flow_position(grid, x, y, direction)
-
-    def furthest_flow_position(self, grid, x, y, direction):
-        furthest_x = x + (self.flow_speed * direction)
-        for i in range(x, furthest_x, direction):
-            if not self.can_flow_through(grid.get_cell(i + direction, y)):
-                return (i, y)
-        return (furthest_x, y)
 
 
 class Stone(UnmovableSolid):
