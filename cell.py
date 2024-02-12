@@ -36,11 +36,21 @@ class GravityAffected(Cell):
         super().__init__(type, color)
         self.vertical_speed = 1
 
+    def update(self, grid, x, y):
+        (new_x, new_y) = self.update_fall(grid, x, y)
+        if (new_x, new_y) != (x, y):
+            return (new_x, new_y)
+
+        (new_x, new_y) = self.update_fall_spread(grid, x, y)
+        if (new_x, new_y) != (x, y):
+            return (new_x, new_y)
+
+        return self.update_not_falling(grid, x, y)
+
     def update_fall(self, grid, x, y):
-        collide_cell_type = self.stop_falling_cell_type()
         furthest_fall_distance = self.furthest_fall_distance(y)
         for i in range(y, furthest_fall_distance):
-            if isinstance(grid.get_cell(x, i + 1), collide_cell_type):
+            if not self.can_traverse(grid.get_cell(x, i + 1)):
                 self.stoped_falling()
                 return (x, i)
         return (x, furthest_fall_distance)
@@ -56,9 +66,41 @@ class GravityAffected(Cell):
     def stoped_falling(self):
         self.vertical_speed = 1
 
-    def stop_falling_cell_type(self):
+    def update_fall_spread(self, grid, x, y):
+        is_lower_left_empty = False
+        is_lower_right_empty = False
+
+        is_lower_left_empty = self.can_traverse(
+            grid.get_cell(x - 1, y)
+        ) and self.can_traverse(grid.get_cell(x - 1, y + 1))
+
+        is_lower_right_empty = self.can_traverse(
+            grid.get_cell(x + 1, y)
+        ) and self.can_traverse(grid.get_cell(x + 1, y + 1))
+
+        if is_lower_left_empty and is_lower_right_empty:
+            # Randomly choose to spread to the left or right
+            move_value = random.choice([1, -1])
+        elif is_lower_left_empty:
+            move_value = -1
+        elif is_lower_right_empty:
+            move_value = 1
+        else:
+            return (x, y)
+
+        return (x + move_value, y + 1)
+
+    def can_traverse(self, cell):
         """
-        Returns the cell type in which the cell stops falling.
+        Check if the cell can traverse the given cell.
+
+        It should be implemented by the subclasses.
+        """
+        raise NotImplementedError
+
+    def update_not_falling(self, grid, x, y):
+        """
+        When the cell is not falling, it can still change its state.
 
         It should be implemented by the subclasses.
         """
@@ -71,13 +113,26 @@ class Solid(GravityAffected):
 
 
 class Liquid(GravityAffected):
-    def __init__(self, type, color):
+    def __init__(self, type, color, flow_speed):
         super().__init__(type, color)
+        self.flow_speed = flow_speed
+
+    def can_traverse(self, cell):
+        return isinstance(cell, Air)
+
+    def can_flow_through(self, cell):
+        """
+        Liquid cells can flow through other liquid cells.
+        """
+        return self.can_traverse(cell) or isinstance(cell, Liquid)
 
 
 class MovableSolid(Solid):
     def __init__(self, type, color):
         super().__init__(type, color)
+
+    def can_traverse(self, cell):
+        return isinstance(cell, Air) or isinstance(cell, Liquid)
 
 
 class UnmovableSolid(Solid):
@@ -110,106 +165,42 @@ class Sand(MovableSolid):
     def __init__(self):
         super().__init__(CellType.SAND, colors.SAND)
 
-    def update(self, grid, x, y):
-        # Check if the cell below is solid
-        (new_x, new_y) = self.update_fall(grid, x, y)
-        if (new_x, new_y) != (x, y):
-            return (new_x, new_y)
-
-        # Check if the cell below is also sand
-        if grid.get_cell(x, y + 1).type == CellType.SAND:
-            return self.update_spread(grid, x, y)
-
-    def stop_falling_cell_type(self):
-        return Solid
-
-    def update_spread(self, grid, x, y):
-        is_lower_left_empty = False
-        is_lower_right_empty = False
-
-        is_lower_left_empty = (
-            grid.get_cell(x - 1, y).type == CellType.AIR
-            and grid.get_cell(x - 1, y + 1).type == CellType.AIR
-        )
-
-        is_lower_right_empty = (
-            grid.get_cell(x + 1, y).type == CellType.AIR
-            and grid.get_cell(x + 1, y + 1).type == CellType.AIR
-        )
-
-        if is_lower_left_empty and is_lower_right_empty:
-            # Randomly choose to spread to the left or right
-            move_value = random.choice([1, -1])
-        elif is_lower_left_empty:
-            move_value = -1
-        elif is_lower_right_empty:
-            move_value = 1
-        else:
-            return
-
-        return (x + move_value, y + 1)
+    def update_not_falling(self, grid, x, y):
+        return (x, y)
 
 
 class Water(Liquid):
     def __init__(self):
-        super().__init__(CellType.WATER, colors.WATER)
+        flow_speed = 3
+        super().__init__(CellType.WATER, colors.WATER, flow_speed)
 
-    def update(self, grid, x, y):
-        # Check if the cell below is empty
-        (new_x, new_y) = self.update_fall(grid, x, y)
-        if (new_x, new_y) != (x, y):
-            return (new_x, new_y)
+    def update_not_falling(self, grid, x, y):
+        return self.update_flow(grid, x, y)
 
-        # Check if the cell below is also water
-        return self.update_spread(grid, x, y)
-
-    def stop_falling_cell_type(self):
-        return Liquid
-
-    def update_fall(self, grid, x, y):
-        furthest_fall_distance = self.furthest_fall_distance(y)
-        for i in range(y, furthest_fall_distance):
-            if isinstance(grid.get_cell(x, i + 1), GravityAffected):
-                self.stoped_falling()
-                return (x, i)
-        return (x, furthest_fall_distance)
-
-    def update_spread(self, grid, x, y):
+    def update_flow(self, grid, x, y):
+        # TODO: Change to a better algorithm, it should look for the furthest air cell to flow, passing through other liquids
         is_left_empty = False
         is_right_empty = False
 
-        is_left_empty = grid.get_cell(x - 1, y).type == CellType.AIR
-        is_right_empty = grid.get_cell(x + 1, y).type == CellType.AIR
+        is_left_empty = self.can_flow_through(grid.get_cell(x - 1, y))
+        is_right_empty = self.can_flow_through(grid.get_cell(x + 1, y))
 
-        is_lower_left_empty = False
-        is_lower_right_empty = False
-
-        is_lower_left_empty = (
-            is_left_empty and grid.get_cell(x - 1, y + 1).type == CellType.AIR
-        )
-        is_lower_right_empty = (
-            is_right_empty and grid.get_cell(x + 1, y + 1).type == CellType.AIR
-        )
-
-        if is_lower_left_empty and is_lower_right_empty:
-            # Randomly choose to spread to the left or right
-            move_value = random.choice([1, -1])
-        elif is_lower_left_empty:
-            move_value = -1
-        elif is_lower_right_empty:
-            move_value = 1
+        if is_left_empty and is_right_empty:
+            direction = random.choice([1, -1])
+        elif is_left_empty:
+            direction = -1
+        elif is_right_empty:
+            direction = 1
         else:
-            if is_left_empty and is_right_empty:
-                move_value = random.choice([1, -1])
-            elif is_left_empty:
-                move_value = -1
-            elif is_right_empty:
-                move_value = 1
-            else:
-                return
-            return (x + move_value, y)
+            return (x, y)
+        return self.furthest_flow_position(grid, x, y, direction)
 
-        return (x + move_value, y + 1)
+    def furthest_flow_position(self, grid, x, y, direction):
+        furthest_x = x + (self.flow_speed * direction)
+        for i in range(x, furthest_x, direction):
+            if not self.can_flow_through(grid.get_cell(i + direction, y)):
+                return (i, y)
+        return (furthest_x, y)
 
 
 class Stone(UnmovableSolid):
