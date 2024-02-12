@@ -4,6 +4,7 @@ import colors
 from grid import Grid
 
 DEBUG = True
+print("Debug mode is ON") if DEBUG else None
 
 
 class CurrentMaterial(Enum):
@@ -28,7 +29,7 @@ class MainLoop:
         # Set the desired FPS
         self.fps = 60
 
-        self.pixel_size = 2
+        self.pixel_size = 5
 
         self.grid = Grid(
             screen_width // self.pixel_size, screen_height // self.pixel_size

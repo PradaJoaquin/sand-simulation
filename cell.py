@@ -16,9 +16,6 @@ class Cell:
         self.type = type
         self.color = color
 
-        # TODO: Add a sleeping attribute to the cell to prevent it from being updated every frame
-        self.sleeping = False
-
     def update(self, grid, x, y):
         """
         This method is called every frame to update the cell's state.
@@ -34,7 +31,61 @@ class Cell:
         raise NotImplementedError
 
 
-class Bedrock(Cell):
+class GravityAffected(Cell):
+    def __init__(self, type, color):
+        super().__init__(type, color)
+        self.vertical_speed = 1
+
+    def update_fall(self, grid, x, y):
+        collide_cell_type = self.stop_falling_cell_type()
+        furthest_fall_distance = self.furthest_fall_distance(y)
+        for i in range(y, furthest_fall_distance):
+            if isinstance(grid.get_cell(x, i + 1), collide_cell_type):
+                self.stoped_falling()
+                return (x, i)
+        return (x, furthest_fall_distance)
+
+    def furthest_fall_distance(self, current_height):
+        """
+        Calculates the furthest possible fall position of the cell based on the vertical speed.
+        """
+        furthest_y = current_height + self.vertical_speed
+        self.vertical_speed *= 1.1  # Gravity acceleration
+        return int(furthest_y)
+
+    def stoped_falling(self):
+        self.vertical_speed = 1
+
+    def stop_falling_cell_type(self):
+        """
+        Returns the cell type in which the cell stops falling.
+
+        It should be implemented by the subclasses.
+        """
+        raise NotImplementedError
+
+
+class Solid(GravityAffected):
+    def __init__(self, type, color):
+        super().__init__(type, color)
+
+
+class Liquid(GravityAffected):
+    def __init__(self, type, color):
+        super().__init__(type, color)
+
+
+class MovableSolid(Solid):
+    def __init__(self, type, color):
+        super().__init__(type, color)
+
+
+class UnmovableSolid(Solid):
+    def __init__(self, type, color):
+        super().__init__(type, color)
+
+
+class Bedrock(UnmovableSolid):
     """
     A cell type that represents the border of the grid.
     """
@@ -46,6 +97,7 @@ class Bedrock(Cell):
         pass
 
 
+# TODO: Change to Nothing instead of Air?
 class Air(Cell):
     def __init__(self):
         super().__init__(CellType.AIR, colors.BLACK)
@@ -54,21 +106,22 @@ class Air(Cell):
         pass
 
 
-class Sand(Cell):
+class Sand(MovableSolid):
     def __init__(self):
         super().__init__(CellType.SAND, colors.SAND)
 
     def update(self, grid, x, y):
-        # Check if the cell below is empty
-        if grid.get_cell(x, y + 1).type == CellType.AIR:
-            return self.update_fall(x, y)
+        # Check if the cell below is solid
+        (new_x, new_y) = self.update_fall(grid, x, y)
+        if (new_x, new_y) != (x, y):
+            return (new_x, new_y)
 
         # Check if the cell below is also sand
-        elif grid.get_cell(x, y + 1).type == CellType.SAND:
+        if grid.get_cell(x, y + 1).type == CellType.SAND:
             return self.update_spread(grid, x, y)
 
-    def update_fall(self, x, y):
-        return (x, y + 1)
+    def stop_falling_cell_type(self):
+        return Solid
 
     def update_spread(self, grid, x, y):
         is_lower_left_empty = False
@@ -97,20 +150,29 @@ class Sand(Cell):
         return (x + move_value, y + 1)
 
 
-class Water(Cell):
+class Water(Liquid):
     def __init__(self):
         super().__init__(CellType.WATER, colors.WATER)
 
     def update(self, grid, x, y):
         # Check if the cell below is empty
-        if grid.get_cell(x, y + 1).type == CellType.AIR:
-            return self.update_fall(x, y)
+        (new_x, new_y) = self.update_fall(grid, x, y)
+        if (new_x, new_y) != (x, y):
+            return (new_x, new_y)
 
         # Check if the cell below is also water
         return self.update_spread(grid, x, y)
 
-    def update_fall(self, x, y):
-        return (x, y + 1)
+    def stop_falling_cell_type(self):
+        return Liquid
+
+    def update_fall(self, grid, x, y):
+        furthest_fall_distance = self.furthest_fall_distance(y)
+        for i in range(y, furthest_fall_distance):
+            if isinstance(grid.get_cell(x, i + 1), GravityAffected):
+                self.stoped_falling()
+                return (x, i)
+        return (x, furthest_fall_distance)
 
     def update_spread(self, grid, x, y):
         is_left_empty = False
@@ -150,7 +212,7 @@ class Water(Cell):
         return (x + move_value, y + 1)
 
 
-class Stone(Cell):
+class Stone(UnmovableSolid):
     def __init__(self):
         super().__init__(CellType.STONE, colors.STONE)
 
