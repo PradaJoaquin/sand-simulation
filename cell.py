@@ -47,20 +47,20 @@ class GravityAffected(Cell):
         return self.update_not_falling(grid, x, y)
 
     def update_fall(self, grid, x, y):
-        furthest_fall_distance = self.furthest_fall_distance(y)
-        for i in range(y, furthest_fall_distance):
+        farthest_fall_distance = self.farthest_fall_distance(y)
+        for i in range(y, farthest_fall_distance):
             if not self.can_traverse(grid.get_cell(x, i + 1)):
                 self.stoped_falling()
                 return (x, i)
-        return (x, furthest_fall_distance)
+        return (x, farthest_fall_distance)
 
-    def furthest_fall_distance(self, current_height):
+    def farthest_fall_distance(self, current_height):
         """
-        Calculates the furthest possible fall position of the cell based on the vertical speed.
+        Calculates the farthest possible fall position of the cell based on the vertical speed.
         """
-        furthest_y = current_height + self.vertical_speed
+        farthest_y = current_height + self.vertical_speed
         self.vertical_speed *= 1.1  # Gravity acceleration
-        return int(furthest_y)
+        return int(farthest_y)
 
     def stoped_falling(self):
         self.vertical_speed = 1
@@ -129,29 +129,29 @@ class Liquid(GravityAffected):
         return self.update_flow(grid, x, y)
 
     def update_flow(self, grid, x, y):
-        furthest_right = self.furthest_flow_position(grid, x, y, 1)
-        furthest_left = self.furthest_flow_position(grid, x, y, -1)
+        farthest_right = self.farthest_flow_position(grid, x, y, 1)
+        farthest_left = self.farthest_flow_position(grid, x, y, -1)
 
-        delta_right = abs(furthest_right - x)
-        delta_left = abs(furthest_left - x)
+        delta_right = abs(farthest_right - x)
+        delta_left = abs(farthest_left - x)
 
         if delta_right == delta_left:
-            new_x = random.choice([furthest_right, furthest_left])
+            new_x = random.choice([farthest_right, farthest_left])
             return (new_x, y)
         elif delta_right > delta_left:
-            return (furthest_right, y)
+            return (farthest_right, y)
         else:
-            return (furthest_left, y)
+            return (farthest_left, y)
 
-    def furthest_flow_position(self, grid, x, y, direction):
+    def farthest_flow_position(self, grid, x, y, direction):
         """
-        Looks for the furthest position the liquid can flow to in the given direction.
+        Looks for the farthest position the liquid can flow to in the given direction.
 
         Liquids only flow to an empty cell.
         """
-        furthest_x = x + (self.flow_speed * direction)
-        furthest_empty = x
-        for i in range(x, furthest_x, direction):
+        farthest_x = x + (self.flow_speed * direction)
+        farthest_empty = x
+        for i in range(x, farthest_x, direction):
             next_cell = grid.get_cell(i + direction, y)
             if not self.can_flow_through(next_cell):
                 return i
@@ -160,13 +160,13 @@ class Liquid(GravityAffected):
                 above_cell = grid.get_cell(i + direction, y - 1)
                 # We prioritize falling rather than flowing to accelerate the water flow
                 if not isinstance(above_cell, Liquid):
-                    furthest_empty = i + direction
+                    farthest_empty = i + direction
                 else:
                     # But we still leave a small chance for the water to flow to the side, to simulate bubbles
                     if random.random() < 0.05:
-                        furthest_empty = i + direction
+                        farthest_empty = i + direction
 
-        return furthest_empty
+        return farthest_empty
 
 
 class MovableSolid(Solid):
