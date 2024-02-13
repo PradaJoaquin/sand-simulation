@@ -154,7 +154,7 @@ class Liquid(GravityAffected):
         for i in range(x, farthest_x, direction):
             next_cell = grid.get_cell(i + direction, y)
             if not self.can_flow_through(next_cell):
-                return i
+                return farthest_empty
             if isinstance(next_cell, Empty):
                 # Look above the empty cell
                 above_cell = grid.get_cell(i + direction, y - 1)
