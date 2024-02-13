@@ -3,14 +3,6 @@ from enum import Enum
 import random
 
 
-class CellType(Enum):
-    BEDROCK = -1  # Cell type representing the border of the grid
-    AIR = 0
-    SAND = 1
-    WATER = 2
-    STONE = 3
-
-
 class Cell:
     def __init__(self, type, color):
         self.type = type
@@ -29,6 +21,14 @@ class Cell:
             y (int): The y position of the cell
         """
         raise NotImplementedError
+
+
+class Empty(Cell):
+    def __init__(self):
+        super().__init__(colors.BLACK)
+
+    def update(self, grid, x, y):
+        pass
 
 
 class GravityAffected(Cell):
@@ -118,7 +118,7 @@ class Liquid(GravityAffected):
         self.flow_speed = flow_speed
 
     def can_traverse(self, cell):
-        return isinstance(cell, Air)
+        return isinstance(cell, Empty)
 
     def can_flow_through(self, cell):
         """
@@ -145,13 +145,18 @@ class Liquid(GravityAffected):
             return (furthest_left, y)
 
     def furthest_flow_position(self, grid, x, y, direction):
+        """
+        Looks for the furthest position the liquid can flow to in the given direction.
+
+        Liquids only flow to an empty cell.
+        """
         furthest_x = x + (self.flow_speed * direction)
         furthest_air = x
         for i in range(x, furthest_x, direction):
             next_cell = grid.get_cell(i + direction, y)
             if not self.can_flow_through(next_cell):
                 return i
-            if isinstance(next_cell, Air):
+            if isinstance(next_cell, Empty):
                 # Look above the air cell
                 above_cell = grid.get_cell(i + direction, y - 1)
                 # We prioritize falling rather than flowing to accelerate the water flow
@@ -170,7 +175,7 @@ class MovableSolid(Solid):
         super().__init__(type, color)
 
     def can_traverse(self, cell):
-        return isinstance(cell, Air) or isinstance(cell, Liquid)
+        return isinstance(cell, Empty) or isinstance(cell, Liquid)
 
 
 class UnmovableSolid(Solid):
@@ -184,16 +189,7 @@ class Bedrock(UnmovableSolid):
     """
 
     def __init__(self):
-        super().__init__(CellType.BEDROCK, colors.WHITE)
-
-    def update(self, grid, x, y):
-        pass
-
-
-# TODO: Change to Nothing instead of Air?
-class Air(Cell):
-    def __init__(self):
-        super().__init__(CellType.AIR, colors.BLACK)
+        super().__init__(colors.WHITE)
 
     def update(self, grid, x, y):
         pass
@@ -201,7 +197,7 @@ class Air(Cell):
 
 class Sand(MovableSolid):
     def __init__(self):
-        super().__init__(CellType.SAND, colors.SAND)
+        super().__init__(colors.SAND)
 
     def update_not_falling(self, grid, x, y):
         return (x, y)
@@ -210,12 +206,12 @@ class Sand(MovableSolid):
 class Water(Liquid):
     def __init__(self):
         flow_speed = 5
-        super().__init__(CellType.WATER, colors.WATER, flow_speed)
+        super().__init__(colors.WATER, flow_speed)
 
 
 class Stone(UnmovableSolid):
     def __init__(self):
-        super().__init__(CellType.STONE, colors.STONE)
+        super().__init__(colors.STONE)
 
     def update(self, grid, x, y):
         pass

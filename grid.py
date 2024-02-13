@@ -1,5 +1,5 @@
 import random
-from cell import Air, Cell, Sand, Bedrock, Water, Stone
+from cell import Empty, Cell, Sand, Bedrock, Water, Stone
 
 
 class Grid:
@@ -7,7 +7,7 @@ class Grid:
         self.width = width
         self.height = height
         # Create a grid of air cells
-        self.grid = [[Air() for _ in range(width + 1)] for _ in range(height + 1)]
+        self.grid = [[Empty() for _ in range(width + 1)] for _ in range(height + 1)]
 
         self.new_desired_positions = {}
         self.already_updated = {}
@@ -28,7 +28,7 @@ class Grid:
 
     def remove_cell(self, x, y):
         if self.is_inside_grid(x, y):
-            self.grid[y][x] = Air()
+            self.grid[y][x] = Empty()
             self.already_updated[(x, y)] = self.grid[y][x]
 
     def update(self):
