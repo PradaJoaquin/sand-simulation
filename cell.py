@@ -67,23 +67,23 @@ class GravityAffected(Cell):
         self.vertical_speed = 1
 
     def update_fall_spread(self, grid, x, y):
-        is_lower_left_empty = False
-        is_lower_right_empty = False
+        can_spread_lower_left = False
+        can_spread_lower_right = False
 
-        is_lower_left_empty = self.can_traverse(
+        can_spread_lower_left = self.can_traverse(
             grid.get_cell(x - 1, y)
         ) and self.can_traverse(grid.get_cell(x - 1, y + 1))
 
-        is_lower_right_empty = self.can_traverse(
+        can_spread_lower_right = self.can_traverse(
             grid.get_cell(x + 1, y)
         ) and self.can_traverse(grid.get_cell(x + 1, y + 1))
 
-        if is_lower_left_empty and is_lower_right_empty:
+        if can_spread_lower_left and can_spread_lower_right:
             # Randomly choose to spread to the left or right
             move_value = random.choice([1, -1])
-        elif is_lower_left_empty:
+        elif can_spread_lower_left:
             move_value = -1
-        elif is_lower_right_empty:
+        elif can_spread_lower_right:
             move_value = 1
         else:
             return (x, y)
@@ -151,23 +151,23 @@ class Liquid(GravityAffected):
         Liquids only flow to an empty cell.
         """
         furthest_x = x + (self.flow_speed * direction)
-        furthest_air = x
+        furthest_empty = x
         for i in range(x, furthest_x, direction):
             next_cell = grid.get_cell(i + direction, y)
             if not self.can_flow_through(next_cell):
                 return i
             if isinstance(next_cell, Empty):
-                # Look above the air cell
+                # Look above the empty cell
                 above_cell = grid.get_cell(i + direction, y - 1)
                 # We prioritize falling rather than flowing to accelerate the water flow
                 if not isinstance(above_cell, Liquid):
-                    furthest_air = i + direction
+                    furthest_empty = i + direction
                 else:
                     # But we still leave a small chance for the water to flow to the side, to simulate bubbles
                     if random.random() < 0.05:
-                        furthest_air = i + direction
+                        furthest_empty = i + direction
 
-        return furthest_air
+        return furthest_empty
 
 
 class MovableSolid(Solid):
