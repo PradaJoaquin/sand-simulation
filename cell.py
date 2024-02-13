@@ -4,8 +4,7 @@ import random
 
 
 class Cell:
-    def __init__(self, type, color):
-        self.type = type
+    def __init__(self, color):
         self.color = color
 
     def update(self, grid, x, y):
@@ -32,8 +31,8 @@ class Empty(Cell):
 
 
 class GravityAffected(Cell):
-    def __init__(self, type, color):
-        super().__init__(type, color)
+    def __init__(self, color):
+        super().__init__(color)
         self.vertical_speed = 1
 
     def update(self, grid, x, y):
@@ -108,13 +107,13 @@ class GravityAffected(Cell):
 
 
 class Solid(GravityAffected):
-    def __init__(self, type, color):
-        super().__init__(type, color)
+    def __init__(self, color):
+        super().__init__(color)
 
 
 class Liquid(GravityAffected):
-    def __init__(self, type, color, flow_speed):
-        super().__init__(type, color)
+    def __init__(self, color, flow_speed):
+        super().__init__(color)
         self.flow_speed = flow_speed
 
     def can_traverse(self, cell):
@@ -171,16 +170,16 @@ class Liquid(GravityAffected):
 
 
 class MovableSolid(Solid):
-    def __init__(self, type, color):
-        super().__init__(type, color)
+    def __init__(self, color):
+        super().__init__(color)
 
     def can_traverse(self, cell):
         return isinstance(cell, Empty) or isinstance(cell, Liquid)
 
 
 class UnmovableSolid(Solid):
-    def __init__(self, type, color):
-        super().__init__(type, color)
+    def __init__(self, color):
+        super().__init__(color)
 
 
 class Bedrock(UnmovableSolid):
