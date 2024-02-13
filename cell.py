@@ -27,7 +27,7 @@ class Empty(Cell):
         super().__init__(colors.BLACK)
 
     def update(self, grid, x, y):
-        pass
+        return (x, y)
 
 
 class GravityAffected(Cell):
@@ -36,13 +36,13 @@ class GravityAffected(Cell):
         self.vertical_speed = 1
 
     def update(self, grid, x, y):
-        (new_x, new_y) = self.update_fall(grid, x, y)
-        if (new_x, new_y) != (x, y):
-            return (new_x, new_y)
+        new_position = self.update_fall(grid, x, y)
+        if new_position != (x, y):
+            return new_position
 
-        (new_x, new_y) = self.update_fall_spread(grid, x, y)
-        if (new_x, new_y) != (x, y):
-            return (new_x, new_y)
+        new_position = self.update_fall_spread(grid, x, y)
+        if new_position != (x, y):
+            return new_position
 
         return self.update_not_falling(grid, x, y)
 
@@ -213,4 +213,4 @@ class Stone(UnmovableSolid):
         super().__init__(colors.STONE)
 
     def update(self, grid, x, y):
-        pass
+        return (x, y)
