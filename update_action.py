@@ -24,8 +24,8 @@ class SpawnCell(UpdateAction):
         super().__init__(x, y)
         self.cell = cell
 
-    def execute(self, grid, cell):
-        grid.spawn_cell(self.x, self.y, cell)
+    def execute(self, grid):
+        grid.spawn_cell(self.x, self.y, self.cell)
 
 
 class RemoveCell(UpdateAction):
@@ -41,3 +41,12 @@ class SwitchCells(UpdateAction):
 
     def execute(self, grid):
         grid.switch_cells(self.x, self.y, self.x2, self.y2)
+
+
+class StayStill(UpdateAction):
+    """
+    This action is used when the cell does not move but still needs to be updated in the next frame.
+    """
+
+    def execute(self, grid):
+        pass

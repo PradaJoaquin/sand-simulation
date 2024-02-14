@@ -1,6 +1,6 @@
 import colors
 import random
-from update_action import SpawnCell, RemoveCell, SwitchCells
+from update_action import SpawnCell, RemoveCell, StayStill, SwitchCells
 
 
 class Cell:
@@ -24,6 +24,14 @@ class Cell:
         """
         raise NotImplementedError
 
+    def is_flammable(self):
+        """
+        Check if the cell can catch fire.
+
+        It should be implemented by the subclasses.
+        """
+        raise NotImplementedError
+
 
 class Empty(Cell):
     def __init__(self):
@@ -31,6 +39,9 @@ class Empty(Cell):
 
     def update(self, grid, x, y):
         return
+
+    def is_flammable(self):
+        return False
 
 
 class GravityAffected(Cell):
@@ -123,6 +134,9 @@ class Liquid(GravityAffected):
         super().__init__(color)
         self.flow_speed = flow_speed
 
+    def is_flammable(self):
+        return False
+
     def can_traverse(self, cell):
         return isinstance(cell, Empty)
 
@@ -210,6 +224,9 @@ class Bedrock(UnmovableSolid):
     def update(self, grid, x, y):
         pass
 
+    def is_flammable(self):
+        return False
+
 
 class Sand(MovableSolid):
     def __init__(self):
@@ -217,6 +234,9 @@ class Sand(MovableSolid):
 
     def update_not_falling(self, grid, x, y):
         return
+
+    def is_flammable(self):
+        return False
 
 
 class Water(Liquid):
@@ -231,3 +251,60 @@ class Stone(UnmovableSolid):
 
     def update_not_falling(self, grid, x, y):
         return
+
+    def is_flammable(self):
+        return False
+
+
+class Fire(UnmovableSolid):
+    def __init__(self):
+        super().__init__(colors.FIRE)
+        self.chance_to_spread = 0.1
+        self.chance_to_extinguish = 0.05
+
+    def is_flammable(self):
+        return False  # Fire can't catch fire
+
+    def update_not_falling(self, grid, x, y):
+        actions = [StayStill(x, y)]
+        actions.extend(self.update_propagation(grid, x, y))
+        actions.extend(self.update_extinguish(grid, x, y))
+        return actions
+
+    def update_propagation(self, grid, x, y):
+        """
+        Look if the fire can propagate to the surrounding cells.
+        """
+        actions = []
+        neighbors = grid.get_all_neighbors_positions(x, y)
+        for i, j in neighbors:
+            if grid.get_cell(i, j).is_flammable():
+                if random.random() < self.chance_to_spread:
+                    actions.append(SpawnCell(i, j, Fire()))
+        return actions
+
+    def update_extinguish(self, grid, x, y):
+        """
+        Look if the fire can extinguish.
+        """
+        # See if there is water nearby
+        neighbors = grid.get_all_neighbors_positions(x, y)
+        for i, j in neighbors:
+            if isinstance(grid.get_cell(i, j), Water):
+                return [RemoveCell(x, y)]
+
+        # Randomly extinguish the fire
+        if random.random() < self.chance_to_extinguish:
+            return [RemoveCell(x, y)]
+        return []
+
+
+class Wood(UnmovableSolid):
+    def __init__(self):
+        super().__init__(colors.WOOD)
+
+    def update_not_falling(self, grid, x, y):
+        return
+
+    def is_flammable(self):
+        return True

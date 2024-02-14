@@ -11,6 +11,8 @@ class CurrentMaterial(Enum):
     SAND = 0
     WATER = 1
     STONE = 2
+    FIRE = 3
+    WOOD = 4
 
 
 class MainLoop:
@@ -72,6 +74,10 @@ class MainLoop:
                     self.change_current_material(CurrentMaterial.WATER)
                 if event.key == pygame.K_3:
                     self.change_current_material(CurrentMaterial.STONE)
+                if event.key == pygame.K_4:
+                    self.change_current_material(CurrentMaterial.FIRE)
+                if event.key == pygame.K_5:
+                    self.change_current_material(CurrentMaterial.WOOD)
             if event.type == pygame.MOUSEWHEEL:
                 if event.y > 0:
                     self.change_cursor_size(1)
@@ -90,6 +96,10 @@ class MainLoop:
                 self.spawn_water()
             if self.current_material == CurrentMaterial.STONE:
                 self.spawn_stone()
+            if self.current_material == CurrentMaterial.FIRE:
+                self.spawn_fire()
+            if self.current_material == CurrentMaterial.WOOD:
+                self.spawn_wood()
         if buttons[2]:
             self.remove_cells()
 
@@ -106,6 +116,12 @@ class MainLoop:
 
     def spawn_stone(self):
         self.modify_grid(self.grid.spawn_stone)
+
+    def spawn_fire(self):
+        self.modify_grid(self.grid.spawn_fire)
+
+    def spawn_wood(self):
+        self.modify_grid(self.grid.spawn_wood)
 
     def remove_cells(self):
         self.modify_grid(self.grid.remove_cell)
@@ -147,10 +163,8 @@ class MainLoop:
         y_grid = y // self.pixel_size
 
         cell = self.grid.get_cell(x_grid, y_grid)
-        print("Cell: ", cell.__class__.__name__)
         print(
-            "Is cell awaken: ",
-            (x_grid, y_grid) in self.grid.awaken_cells,
+            f"cell: {cell.__class__.__name__}, position: ({x_grid}, {y_grid}), awake: {(x_grid, y_grid) in self.grid.awaken_cells}"
         )
 
     def render(self):
