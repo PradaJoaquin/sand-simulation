@@ -30,9 +30,12 @@ class Grid:
         self.awaken_cells = set()
 
         for action in update_actions:
+            x, y = action.get_position()
+            # We only want to update the same cell once
+            if (x, y) in self.updated_cells:
+                continue
             # For each action, we also need to keep awaken the cells that are executing the action.
             # This is because if a cell wants to update itself but it can't, it may need to update again in the next frame.
-            x, y = action.get_position()
             self.awaken_cells.add((x, y))
             self.awake_neighbor_cells(x, y)
 
@@ -57,10 +60,6 @@ class Grid:
         self.spawn_cell(x, y, Empty())
 
     def spawn_cell(self, x, y, cell):
-        # We only want to update the same cell once
-        if (x, y) in self.updated_cells:
-            return
-
         if self.is_inside_grid(x, y):
             self.grid[y][x] = cell
             self.updated_cells[(x, y)] = self.grid[y][x]
@@ -69,7 +68,7 @@ class Grid:
 
     def switch_cells(self, x1, y1, x2, y2):
         # We only want to update the same cell once
-        if (x1, y1) in self.updated_cells or (x2, y2) in self.updated_cells:
+        if (x2, y2) in self.updated_cells:
             return
 
         cell_1 = self.get_cell(x1, y1)
