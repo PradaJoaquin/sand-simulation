@@ -1,6 +1,6 @@
 import colors
-from enum import Enum
 import random
+from update_action import SpawnCell, RemoveCell, SwitchCells
 
 
 class Cell:
@@ -18,6 +18,9 @@ class Cell:
             grid (Grid): The grid containing the cell
             x (int): The x position of the cell
             y (int): The y position of the cell
+
+        Returns:
+            List[UpdateAction]: A list of actions to execute on the grid or None if no action is needed
         """
         raise NotImplementedError
 
@@ -27,7 +30,7 @@ class Empty(Cell):
         super().__init__(colors.BLACK)
 
     def update(self, grid, x, y):
-        return (x, y)
+        return
 
 
 class GravityAffected(Cell):
@@ -36,13 +39,13 @@ class GravityAffected(Cell):
         self.vertical_speed = 1
 
     def update(self, grid, x, y):
-        new_position = self.update_fall(grid, x, y)
-        if new_position != (x, y):
-            return new_position
+        actions = self.update_fall(grid, x, y)
+        if actions:
+            return actions
 
-        new_position = self.update_fall_spread(grid, x, y)
-        if new_position != (x, y):
-            return new_position
+        actions = self.update_fall_spread(grid, x, y)
+        if actions:
+            return actions
 
         return self.update_not_falling(grid, x, y)
 
@@ -51,8 +54,11 @@ class GravityAffected(Cell):
         for i in range(y, farthest_fall_distance):
             if not self.can_traverse(grid.get_cell(x, i + 1)):
                 self.stoped_falling()
-                return (x, i)
-        return (x, farthest_fall_distance)
+                if i == y:
+                    # The cell can't fall
+                    return
+                return [SwitchCells(x, y, x, i)]
+        return [SwitchCells(x, y, x, farthest_fall_distance)]
 
     def farthest_fall_distance(self, current_height):
         """
@@ -85,9 +91,10 @@ class GravityAffected(Cell):
         elif can_spread_lower_right:
             move_value = 1
         else:
-            return (x, y)
+            # The cell can't spread
+            return
 
-        return (x + move_value, y + 1)
+        return [SwitchCells(x, y, x + move_value, y + 1)]
 
     def can_traverse(self, cell):
         """
@@ -132,16 +139,20 @@ class Liquid(GravityAffected):
         farthest_right = self.farthest_flow_position(grid, x, y, 1)
         farthest_left = self.farthest_flow_position(grid, x, y, -1)
 
+        if farthest_right == x and farthest_left == x:
+            # The liquid can't flow
+            return
+
         delta_right = abs(farthest_right - x)
         delta_left = abs(farthest_left - x)
 
         if delta_right == delta_left:
             new_x = random.choice([farthest_right, farthest_left])
-            return (new_x, y)
+            return [SwitchCells(x, y, new_x, y)]
         elif delta_right > delta_left:
-            return (farthest_right, y)
+            return [SwitchCells(x, y, farthest_right, y)]
         else:
-            return (farthest_left, y)
+            return [SwitchCells(x, y, farthest_left, y)]
 
     def farthest_flow_position(self, grid, x, y, direction):
         """
@@ -181,6 +192,12 @@ class UnmovableSolid(Solid):
     def __init__(self, color):
         super().__init__(color)
 
+    def update(self, grid, x, y):
+        """
+        Unmovable solids don't fall, so we only need to update their state when they are not falling.
+        """
+        return self.update_not_falling(grid, x, y)
+
 
 class Bedrock(UnmovableSolid):
     """
@@ -199,7 +216,7 @@ class Sand(MovableSolid):
         super().__init__(colors.SAND)
 
     def update_not_falling(self, grid, x, y):
-        return (x, y)
+        return
 
 
 class Water(Liquid):
@@ -212,5 +229,5 @@ class Stone(UnmovableSolid):
     def __init__(self):
         super().__init__(colors.STONE)
 
-    def update(self, grid, x, y):
-        return (x, y)
+    def update_not_falling(self, grid, x, y):
+        return

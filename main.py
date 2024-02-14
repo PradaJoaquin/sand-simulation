@@ -77,6 +77,10 @@ class MainLoop:
                     self.change_cursor_size(1)
                 if event.y < 0:
                     self.change_cursor_size(-1)
+            # Mouse wheel click
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 2:
+                    self.debug_cell()
 
         buttons = pygame.mouse.get_pressed()
         if buttons[0]:
@@ -136,6 +140,18 @@ class MainLoop:
             self.current_cursor_size += change
             if DEBUG:
                 print(f"Current cursor size: {self.current_cursor_size}")
+
+    def debug_cell(self):
+        x, y = pygame.mouse.get_pos()
+        x_grid = x // self.pixel_size
+        y_grid = y // self.pixel_size
+
+        cell = self.grid.get_cell(x_grid, y_grid)
+        print("Cell: ", cell.__class__.__name__)
+        print(
+            "Is cell awaken: ",
+            (x_grid, y_grid) in self.grid.awaken_cells,
+        )
 
     def render(self):
         self.render_cells()
