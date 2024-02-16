@@ -61,27 +61,11 @@ class Element(Cell):
 
         self.vertical_speed = 1.0
 
-    def update(self, grid, x, y):
-        """
-        Every element has the same update steps:
-        - Try to fall
-        - Try to spread
-        - If it can't fall or spread, update its state based on the grid.
-        """
-        actions = self.update_fall(grid, x, y)
-        if actions:
-            return actions
-
-        actions = self.update_fall_spread(grid, x, y)
-        if actions:
-            return actions
-        return self.update_not_falling(grid, x, y)
-
     def update_fall(self, grid, x, y):
         fall_direction = self.fall_direction.value
         if fall_direction == 0:
             # The cell can't fall
-            return
+            return []
 
         vertical_speed = self.update_vertical_speed()
 
@@ -91,7 +75,7 @@ class Element(Cell):
                 self.vertical_speed = 1
                 if i == y:
                     # The cell can't fall
-                    return
+                    return []
                 return [SwitchCells(x, y, x, i)]
         return [SwitchCells(x, y, x, farthest_fall_distance)]
 
@@ -104,7 +88,7 @@ class Element(Cell):
         fall_direction = self.fall_direction.value
         if fall_direction == 0:
             # The cell can't fall
-            return
+            return []
 
         can_spread_left = False
         can_spread_right = False
@@ -126,7 +110,7 @@ class Element(Cell):
             move_value = 1
         else:
             # The cell can't spread
-            return
+            return []
 
         return [SwitchCells(x, y, x + move_value, y + fall_direction)]
 
@@ -171,16 +155,13 @@ class Fluid(Element):
         )
         self.flow_speed = flow_speed
 
-    def update_not_falling(self, grid, x, y):
-        return self.update_flow(grid, x, y)
-
     def update_flow(self, grid, x, y):
         farthest_right = self.farthest_flow_position(grid, x, y, 1)
         farthest_left = self.farthest_flow_position(grid, x, y, -1)
 
         if farthest_right == x and farthest_left == x:
             # The fluid can't flow
-            return
+            return []
 
         delta_right = abs(farthest_right - x)
         delta_left = abs(farthest_left - x)
@@ -237,6 +218,17 @@ class Liquid(Fluid):
             flow_speed,
         )
 
+    def update(self, grid, x, y):
+        actions = self.update_fall(grid, x, y)
+        if actions:
+            return actions
+
+        actions = self.update_fall_spread(grid, x, y)
+        if actions:
+            return actions
+
+        return self.update_flow(grid, x, y)
+
     def can_traverse(self, cell):
         return isinstance(cell, Empty) or isinstance(cell, Gas)
 
@@ -264,6 +256,17 @@ class Solid(Element):
             color, fall_direction, is_affected_by_gravity, flammability_chance
         )
 
+    def update(self, grid, x, y):
+        actions = self.update_fall(grid, x, y)
+        if actions:
+            return actions
+
+        actions = self.update_fall_spread(grid, x, y)
+        if actions:
+            return actions
+
+        return self.update_not_falling(grid, x, y)
+
     def can_traverse(self, cell):
         return isinstance(cell, Empty) or isinstance(cell, Fluid)
 
@@ -272,9 +275,6 @@ class MovableSolid(Solid):
     def __init__(self, color, flammability_chance):
         fall_direction = FallDirection.DOWN
         super().__init__(color, fall_direction, flammability_chance)
-
-    def update_not_falling(self, grid, x, y):
-        return
 
 
 class UnmovableSolid(Solid):
@@ -294,7 +294,7 @@ class Bedrock(UnmovableSolid):
         super().__init__(color, flammability_chance)
 
     def update_not_falling(self, grid, x, y):
-        return
+        return []
 
 
 class Sand(MovableSolid):
@@ -318,6 +318,9 @@ class Stone(UnmovableSolid):
         flammability_chance = 0
         super().__init__(color, flammability_chance)
 
+    def update_not_falling(self, grid, x, y):
+        return []
+
 
 class Fire(UnmovableSolid):
     def __init__(self):
@@ -326,10 +329,12 @@ class Fire(UnmovableSolid):
         super().__init__(color, flammability_chance)
 
         self.chance_to_extinguish = 0.01
+        self.chance_to_create_smoke = 0.005
 
     def update_not_falling(self, grid, x, y):
         actions = [StayStill(x, y)]
         actions.extend(self.update_propagation(grid, x, y))
+        actions.extend(self.update_smoke_creation(grid, x, y))
         actions.extend(self.update_extinguish(grid, x, y))
         return actions
 
@@ -362,6 +367,19 @@ class Fire(UnmovableSolid):
             return [RemoveCell(x, y)]
         return []
 
+    def update_smoke_creation(self, grid, x, y):
+        """
+        Look if the fire can create smoke. Smoke can be created in empty cells around the fire.
+        """
+        neighbors = grid.get_all_neighbors_positions(x, y)
+        for i, j in neighbors:
+            if (
+                isinstance(grid.get_cell(i, j), Empty)
+                and random.random() < self.chance_to_create_smoke
+            ):
+                return [SpawnCell(i, j, Smoke())]
+        return []
+
 
 class Wood(UnmovableSolid):
     def __init__(self):
@@ -370,4 +388,43 @@ class Wood(UnmovableSolid):
         super().__init__(color, flammability_chance)
 
     def update_not_falling(self, grid, x, y):
-        return
+        return []
+
+
+class Smoke(Gas):
+    def __init__(self):
+        color = colors.SMOKE
+        flammability_chance = 0
+        flow_speed = 2
+        super().__init__(color, flammability_chance, flow_speed)
+
+        self.chance_to_dissipate = 0.005
+
+    def update(self, grid, x, y):
+        # Smoke first looks if it can dissipate
+        actions = self.update_dissipate(grid, x, y)
+        if actions:
+            return actions
+
+        actions = self.update_fall(grid, x, y)
+        if actions:
+            return actions
+
+        actions = self.update_fall_spread(grid, x, y)
+        if actions:
+            return actions
+
+        actions = self.update_flow(grid, x, y)
+        if actions:
+            return actions
+
+        return [StayStill(x, y)]
+
+    def update_dissipate(self, grid, x, y):
+        """
+        Look if the smoke can dissipate.
+        """
+        # Randomly dissipate the smoke
+        if random.random() < self.chance_to_dissipate:
+            return [RemoveCell(x, y)]
+        return []
