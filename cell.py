@@ -1,3 +1,4 @@
+from enum import Enum
 import colors
 import random
 from update_action import SpawnCell, RemoveCell, StayStill, SwitchCells
@@ -24,14 +25,6 @@ class Cell:
         """
         raise NotImplementedError
 
-    def is_flammable(self):
-        """
-        Check if the cell can catch fire.
-
-        It should be implemented by the subclasses.
-        """
-        raise NotImplementedError
-
 
 class Empty(Cell):
     def __init__(self):
@@ -40,16 +33,41 @@ class Empty(Cell):
     def update(self, grid, x, y):
         return
 
-    def is_flammable(self):
-        return False
+
+class FallDirection(Enum):
+    UP = -1
+    DOWN = 1
+    NONE = 0
 
 
-class GravityAffected(Cell):
-    def __init__(self, color):
+class Element(Cell):
+    """
+    An element is a type of cell that interacts with other cells to change its state.
+
+    The element has the following properties:
+    - color (Color): The color of the element
+    - fall_direction (FallDirection): The direction the element falls
+    - is_affected_by_gravity (bool): Whether the element is affected by gravity
+    - flammability_chance (float): The chance the element can catch fire
+    """
+
+    def __init__(
+        self, color, fall_direction, is_affected_by_gravity, flammability_chance
+    ):
         super().__init__(color)
-        self.vertical_speed = 1
+        self.fall_direction = fall_direction
+        self.is_affected_by_gravity = is_affected_by_gravity
+        self.flammability_chance = flammability_chance
+
+        self.vertical_speed = 1.0
 
     def update(self, grid, x, y):
+        """
+        Every element has the same update steps:
+        - Try to fall
+        - Try to spread
+        - If it can't fall or spread, update its state based on the grid.
+        """
         actions = self.update_fall(grid, x, y)
         if actions:
             return actions
@@ -57,55 +75,66 @@ class GravityAffected(Cell):
         actions = self.update_fall_spread(grid, x, y)
         if actions:
             return actions
-
         return self.update_not_falling(grid, x, y)
 
     def update_fall(self, grid, x, y):
-        farthest_fall_distance = self.farthest_fall_distance(y)
-        for i in range(y, farthest_fall_distance):
-            if not self.can_traverse(grid.get_cell(x, i + 1)):
-                self.stoped_falling()
+        fall_direction = self.fall_direction.value
+        if fall_direction == 0:
+            # The cell can't fall
+            return
+
+        vertical_speed = self.update_vertical_speed()
+
+        farthest_fall_distance = y + (vertical_speed * fall_direction)
+        for i in range(y, farthest_fall_distance, fall_direction):
+            if not self.can_traverse(grid.get_cell(x, i + fall_direction)):
+                self.vertical_speed = 1
                 if i == y:
                     # The cell can't fall
                     return
                 return [SwitchCells(x, y, x, i)]
         return [SwitchCells(x, y, x, farthest_fall_distance)]
 
-    def farthest_fall_distance(self, current_height):
-        """
-        Calculates the farthest possible fall position of the cell based on the vertical speed.
-        """
-        farthest_y = current_height + self.vertical_speed
-        self.vertical_speed *= 1.1  # Gravity acceleration
-        return int(farthest_y)
-
-    def stoped_falling(self):
-        self.vertical_speed = 1
+    def update_vertical_speed(self):
+        if self.is_affected_by_gravity:
+            self.vertical_speed *= 1.1  # Gravity acceleration
+        return int(self.vertical_speed)
 
     def update_fall_spread(self, grid, x, y):
-        can_spread_lower_left = False
-        can_spread_lower_right = False
+        fall_direction = self.fall_direction.value
+        if fall_direction == 0:
+            # The cell can't fall
+            return
 
-        can_spread_lower_left = self.can_traverse(
+        can_spread_left = False
+        can_spread_right = False
+
+        can_spread_left = self.can_traverse(
             grid.get_cell(x - 1, y)
-        ) and self.can_traverse(grid.get_cell(x - 1, y + 1))
+        ) and self.can_traverse(grid.get_cell(x - 1, y + fall_direction))
 
-        can_spread_lower_right = self.can_traverse(
+        can_spread_right = self.can_traverse(
             grid.get_cell(x + 1, y)
-        ) and self.can_traverse(grid.get_cell(x + 1, y + 1))
+        ) and self.can_traverse(grid.get_cell(x + 1, y + fall_direction))
 
-        if can_spread_lower_left and can_spread_lower_right:
+        if can_spread_left and can_spread_right:
             # Randomly choose to spread to the left or right
             move_value = random.choice([1, -1])
-        elif can_spread_lower_left:
+        elif can_spread_left:
             move_value = -1
-        elif can_spread_lower_right:
+        elif can_spread_right:
             move_value = 1
         else:
             # The cell can't spread
             return
 
-        return [SwitchCells(x, y, x + move_value, y + 1)]
+        return [SwitchCells(x, y, x + move_value, y + fall_direction)]
+
+    def try_to_ignite(self):
+        """
+        Try to ignite the cell.
+        """
+        return random.random() < self.flammability_chance
 
     def can_traverse(self, cell):
         """
@@ -124,27 +153,23 @@ class GravityAffected(Cell):
         raise NotImplementedError
 
 
-class Solid(GravityAffected):
-    def __init__(self, color):
-        super().__init__(color)
+class Fluid(Element):
+    """
+    A fluid is any material that flows in response to an applied force, therefore liquids and gases are fluids.
+    """
 
-
-class Liquid(GravityAffected):
-    def __init__(self, color, flow_speed):
-        super().__init__(color)
+    def __init__(
+        self,
+        color,
+        fall_direction,
+        is_affected_by_gravity,
+        flammability_chance,
+        flow_speed,
+    ):
+        super().__init__(
+            color, fall_direction, is_affected_by_gravity, flammability_chance
+        )
         self.flow_speed = flow_speed
-
-    def is_flammable(self):
-        return False
-
-    def can_traverse(self, cell):
-        return isinstance(cell, Empty)
-
-    def can_flow_through(self, cell):
-        """
-        Liquid cells can flow through other liquid cells.
-        """
-        return self.can_traverse(cell) or isinstance(cell, Liquid)
 
     def update_not_falling(self, grid, x, y):
         return self.update_flow(grid, x, y)
@@ -154,7 +179,7 @@ class Liquid(GravityAffected):
         farthest_left = self.farthest_flow_position(grid, x, y, -1)
 
         if farthest_right == x and farthest_left == x:
-            # The liquid can't flow
+            # The fluid can't flow
             return
 
         delta_right = abs(farthest_right - x)
@@ -193,24 +218,69 @@ class Liquid(GravityAffected):
 
         return farthest_empty
 
+    def can_flow_through(self, cell):
+        """
+        Fluid elements can flow through other fluid elements.
+        """
+        return self.can_traverse(cell) or isinstance(cell, Fluid)
 
-class MovableSolid(Solid):
-    def __init__(self, color):
-        super().__init__(color)
+
+class Liquid(Fluid):
+    def __init__(self, color, flammability_chance, flow_speed):
+        is_affected_by_gravity = True
+        fall_direction = FallDirection.DOWN
+        super().__init__(
+            color,
+            fall_direction,
+            is_affected_by_gravity,
+            flammability_chance,
+            flow_speed,
+        )
 
     def can_traverse(self, cell):
-        return isinstance(cell, Empty) or isinstance(cell, Liquid)
+        return isinstance(cell, Empty) or isinstance(cell, Gas)
+
+
+class Gas(Fluid):
+    def __init__(self, color, flammability_chance, flow_speed):
+        fall_direction = FallDirection.UP
+        is_affected_by_gravity = False
+        super().__init__(
+            color,
+            fall_direction,
+            is_affected_by_gravity,
+            flammability_chance,
+            flow_speed,
+        )
+
+    def can_traverse(self, cell):
+        return isinstance(cell, Empty)
+
+
+class Solid(Element):
+    def __init__(self, color, fall_direction, flammability_chance):
+        is_affected_by_gravity = True
+        super().__init__(
+            color, fall_direction, is_affected_by_gravity, flammability_chance
+        )
+
+    def can_traverse(self, cell):
+        return isinstance(cell, Empty) or isinstance(cell, Fluid)
+
+
+class MovableSolid(Solid):
+    def __init__(self, color, flammability_chance):
+        fall_direction = FallDirection.DOWN
+        super().__init__(color, fall_direction, flammability_chance)
+
+    def update_not_falling(self, grid, x, y):
+        return
 
 
 class UnmovableSolid(Solid):
-    def __init__(self, color):
-        super().__init__(color)
-
-    def update(self, grid, x, y):
-        """
-        Unmovable solids don't fall, so we only need to update their state when they are not falling.
-        """
-        return self.update_not_falling(grid, x, y)
+    def __init__(self, color, flammability_chance):
+        fall_direction = FallDirection.NONE  # Unmovable solids don't fall
+        super().__init__(color, fall_direction, flammability_chance)
 
 
 class Bedrock(UnmovableSolid):
@@ -219,51 +289,43 @@ class Bedrock(UnmovableSolid):
     """
 
     def __init__(self):
-        super().__init__(colors.WHITE)
+        color = colors.WHITE
+        flammability_chance = 0
+        super().__init__(color, flammability_chance)
 
-    def update(self, grid, x, y):
-        pass
-
-    def is_flammable(self):
-        return False
+    def update_not_falling(self, grid, x, y):
+        return
 
 
 class Sand(MovableSolid):
     def __init__(self):
-        super().__init__(colors.SAND)
-
-    def update_not_falling(self, grid, x, y):
-        return
-
-    def is_flammable(self):
-        return False
+        color = colors.SAND
+        flammability_chance = 0
+        super().__init__(color, flammability_chance)
 
 
 class Water(Liquid):
     def __init__(self):
+        color = colors.WATER
+        flammability_chance = 0
         flow_speed = 5
-        super().__init__(colors.WATER, flow_speed)
+        super().__init__(color, flammability_chance, flow_speed)
 
 
 class Stone(UnmovableSolid):
     def __init__(self):
-        super().__init__(colors.STONE)
-
-    def update_not_falling(self, grid, x, y):
-        return
-
-    def is_flammable(self):
-        return False
+        color = colors.STONE
+        flammability_chance = 0
+        super().__init__(color, flammability_chance)
 
 
 class Fire(UnmovableSolid):
     def __init__(self):
-        super().__init__(colors.FIRE)
-        self.chance_to_spread = 0.1
-        self.chance_to_extinguish = 0.05
+        color = colors.FIRE
+        flammability_chance = 0
+        super().__init__(color, flammability_chance)
 
-    def is_flammable(self):
-        return False  # Fire can't catch fire
+        self.chance_to_extinguish = 0.01
 
     def update_not_falling(self, grid, x, y):
         actions = [StayStill(x, y)]
@@ -278,9 +340,11 @@ class Fire(UnmovableSolid):
         actions = []
         neighbors = grid.get_all_neighbors_positions(x, y)
         for i, j in neighbors:
-            if grid.get_cell(i, j).is_flammable():
-                if random.random() < self.chance_to_spread:
-                    actions.append(SpawnCell(i, j, Fire()))
+            neighbor = grid.get_cell(i, j)
+            if isinstance(neighbor, Empty):
+                continue
+            if grid.get_cell(i, j).try_to_ignite():
+                actions.append(SpawnCell(i, j, Fire()))
         return actions
 
     def update_extinguish(self, grid, x, y):
@@ -301,10 +365,9 @@ class Fire(UnmovableSolid):
 
 class Wood(UnmovableSolid):
     def __init__(self):
-        super().__init__(colors.WOOD)
+        color = colors.WOOD
+        flammability_chance = 0.01
+        super().__init__(color, flammability_chance)
 
     def update_not_falling(self, grid, x, y):
         return
-
-    def is_flammable(self):
-        return True

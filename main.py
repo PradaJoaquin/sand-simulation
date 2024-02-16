@@ -85,7 +85,7 @@ class MainLoop:
                     self.change_cursor_size(-1)
             # Mouse wheel click
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 2:
+                if event.button == 2 and DEBUG:
                     self.debug_cell()
 
         buttons = pygame.mouse.get_pressed()
