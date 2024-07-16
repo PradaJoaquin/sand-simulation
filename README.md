@@ -3,7 +3,7 @@
 # Sand Simulation
 Sand simulation made with pygame.
 
-In this sand simulation you can spawn up to 5 materials: **Sand, Water, Stone, Fire, Wood**. They interact and behave with each other in different ways, try it yourself!
+In this sand simulation you can spawn up to 5 materials: **Sand**, **Water**, **Stone**, **Fire** & **Wood**. They interact and behave with each other in different ways, try it yourself!
 
 ![sand_simulation](https://github.com/user-attachments/assets/66d8e51d-f1b1-4212-bf38-e871c1165666)
 
