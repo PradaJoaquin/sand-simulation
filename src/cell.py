@@ -64,7 +64,7 @@ class GravityAffected(Cell):
         farthest_fall_distance = self.farthest_fall_distance(y)
         for i in range(y, farthest_fall_distance):
             if not self.can_traverse(grid.get_cell(x, i + 1)):
-                self.stoped_falling()
+                self.stopped_falling()
                 if i == y:
                     # The cell can't fall
                     return
@@ -79,7 +79,7 @@ class GravityAffected(Cell):
         self.vertical_speed *= 1.1  # Gravity acceleration
         return int(farthest_y)
 
-    def stoped_falling(self):
+    def stopped_falling(self):
         self.vertical_speed = 1
 
     def update_fall_spread(self, grid, x, y):
