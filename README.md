@@ -25,7 +25,7 @@ In this sand simulation you can spawn up to 5 materials: **Sand**, **Water**, **
     - `mouse-right-click`: deletes with brush
 
 - Delete all:
-    - `r`: Deletes all the canvas
+    - `R`: Deletes all the canvas
 
 ### DEBUG
 
